@@ -21,30 +21,11 @@ function addCommentSide (option: string) {														// The only input is goi
 			var lineObject = localEditor.document.lineAt(lineIndex);							// insert new line 
 			var line = lineObject.text;															// the line of code that has to be commented is stored
 			var insertionSuccess = localEditor.edit((editBuilder) => {							// 
-			editBuilder.insert(new vscode.Position(lineIndex, 0), option);						// the speech string input (option) is in serted in the very begining of the new line (the one that was inserted)
+			editBuilder.insert(new vscode.Position(lineIndex-1, line.length + 9999999), option);						// the speech string input (option) is in serted in the very begining of the new line (the one that was inserted)
 			
 			});
 	
 			if (!insertionSuccess) {return;}													//if insertion fails, skip
-			vscode.commands.executeCommand('editor.action.commentLine').then(() => {			//
-				var lineObjectComment = localEditor.document.lineAt(lineIndex);					//from the line where the string was inserted 
-				var lineComment = lineObjectComment.text;										//the string is stored in a var
-				localEditor.edit((editBuilder) => {
-					editBuilder.insert(new vscode.Position(lineIndex-1, line.length + 9999999 ), '  ' + lineComment); //the stored text is inserted on the very right of the actual code
-					
-				});
-				
-				var pos = new vscode.Position(position.line, position.character);
-				var posComment = new vscode.Position(position.line+1, position.character);
-				var commentSelection = new vscode.Selection(posComment, posComment);
-				var newSelection = new vscode.Selection(pos, pos);
-				localEditor.selection = commentSelection;
-				vscode.commands.executeCommand('editor.action.deleteLines').then(() => {
-					localEditor.selection = newSelection;
-				});
-				
-			});
-			
 			
 		});
 	}else {
@@ -68,11 +49,6 @@ function addComment (option: string) {
 			});
 	
 			if (!insertionSuccess) {return;}												// if the insertion of the commentary failed we skip
-			vscode.commands.executeCommand('editor.action.commentLine').then(() => {		// The inserted line will be transformed into a commentary
-				var pos = new vscode.Position(position.line+1, position.character);			// the cursors is brought back to the original position before ending the recordinfg
-				var newSelection = new vscode.Selection(pos, pos);							// a new instance of a position object gets created
-				localEditor.selection = newSelection;										// and assigned to the current editor
-			});
 
 		});
 	}else {																					// if no editor skips the addition of comment
@@ -81,7 +57,10 @@ function addComment (option: string) {
 }
 // Function to show notification about the necessary dependences for the extension to work
 function showPErrorMsg() {
-	vscode.window.showInformationMessage('Please install Python3 + Speach_Recognition + PyAudio in order to run this extension!!!'); 		// if the commands couldn't be executed we show error
+	vscode.window.showInformationMessage('Please install Python + Speach_Recognition + PyAudio in order to run this extension!!!'); 		// if the commands couldn't be executed we show error
+}
+function showPErrorMsg2() {
+	vscode.window.showInformationMessage('Weee!!!'); 		// if the commands couldn't be executed we show error
 }
 
 // Class that represents the Icon shown on the bottom bar to enable the recording functions (inline commentary)
@@ -181,7 +160,8 @@ run(lang: String) {
 	this.child = this.execFile(join(__dirname, 'WordsMatching.exe')).on('error', (error: any) => showError(error));		// the program words matching is executed to write the text form voice, 
 	} else {
 	// console.log('Using CMUSphinx Voice Recognition')
-	this.child = this.execFile('python3', [ join(__dirname, '../speech/speechTest.py'),lang.toString()]).on('error', (error: any) => showError(error));		//if windows is not being used we use the python script to recognize the voice
+	// this.child = this.execFile('python', [ '-m', 'pip', 'install', '--yes', 'speechrecognition']).on('error', (error: any) => showError(error));		//if windows is not being used we use the python script to recognize the voice
+	this.child = this.execFile('python', [ join(__dirname, '../speech/speechTest.py'),lang.toString()]).on('error', (error: any) => showError(error));		//if windows is not being used we use the python script to recognize the voice
 	}
 	this.child.stdout.on('data',																						// the data from the recording, stored in the Buffer is transformed to a strng
 	(data: Buffer) => {
@@ -237,7 +217,7 @@ class VoiceListener {
 		this.child = this.execFile(join(__dirname, 'WordsMatching.exe')).on('error', (error: any) => showError(error));
 	  } else {
 		// console.log('Using CMUSphinx Voice Recognition')
-		this.child = this.execFile('python3', [ join(__dirname, '../speech/speechTest.py'), lang.toString()]).on('error', (error: any) => showError(error));
+		this.child = this.execFile('python', [ join(__dirname, '../speech/speechTest.py'), lang.toString()]).on('error', (error: any) => showError(error));
 	  }
 	  this.child.stdout.on('data',
 		(data: Buffer) => {
@@ -285,8 +265,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 	var listen = vscode.commands.registerCommand('extension.voiceComment', () => {						// registers the above line voice comment
+		// let checkPython = false;																		// checks if the dependences are installed and notifies the user to install them
 		let checkPython = false;																		// checks if the dependences are installed and notifies the user to install them
-		const checkPythonprocess = execFile('python3', ['-c','import sys; import speech_recognition; print(sys.version_info[0]); sys.stdout.flush()']).on('error', err => showPErrorMsg());
+		const checkPythonprocess = execFile('python', ['-c','import sys; import speech_recognition; print(sys.version_info[0]); sys.stdout.flush()']).on('error', err => showPErrorMsg());
 		checkPythonprocess.stdout.on('data', (data: Buffer) => {
 			if (data.indexOf('3') >= 0) { checkPython = true; }											// using pithon3
 			checkPythonprocess.kill();
@@ -295,13 +276,20 @@ export function activate(context: vscode.ExtensionContext) {
 			if (checkPython === true) { var listener = new VoiceListener(context, platform(), lang); }	// Init the voice listener
 			else { showPErrorMsg(); }
 		});
+		// const checkPythonprocess2 = execFile('python', ['-c','import sys; import platform; print(platform.python_version()); sys.stdout.flush()']).on('error', err => showPErrorMsg2());
+		// checkPythonprocess2.stdout.on('data', (data: Buffer) => {
+		// 	vscode.window.showInformationMessage(data.toString()); 		// if the commands couldn't be executed we show error
+		// });
+		// checkPythonprocess2.on('exit', (code, signal) => {
+		// 	showPErrorMsg2();
+		// });
 	});
 
 	context.subscriptions.push(listen);
 
 	var sideListen = vscode.commands.registerCommand('extension.iVoiceComment', () => {					// registers the above side line voice comment equal to the one before changing the object that instatiates
 		let checkPython = false;
-		const checkPythonprocess = execFile('python3', ['-c','import sys; import speech_recognition; print(sys.version_info[0]); sys.stdout.flush()']).on('error', err => showPErrorMsg());
+		const checkPythonprocess = execFile('python', ['-c','import sys; import speech_recognition; print(sys.version_info[0]); sys.stdout.flush()']).on('error', err => showPErrorMsg());
 		checkPythonprocess.stdout.on('data', (data: Buffer) => {
 			if (data.indexOf('3') >= 0) { checkPython = true; }
 			checkPythonprocess.kill();
@@ -310,6 +298,13 @@ export function activate(context: vscode.ExtensionContext) {
 			if (checkPython === true) { var listener = new VoiceListenerSide(context, platform(), lang); }
 			else { showPErrorMsg(); }
 		});
+		// const checkPythonprocess2 = execFile('python', ['-c','import sys; import platform; print(platform.python_version()); sys.stdout.flush()']).on('error', err => showPErrorMsg2());
+		// checkPythonprocess2.stdout.on('data', (data: Buffer) => {
+		// 	vscode.window.showInformationMessage(data.toString()); 		// if the commands couldn't be executed we show error
+		// });
+		// checkPythonprocess2.on('exit', (code, signal) => {
+		// 	showPErrorMsg2();
+		// });
 	});
 
 	context.subscriptions.push(sideListen);
